@@ -1,3 +1,4 @@
+const express = require('express');
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
 
@@ -5,7 +6,7 @@ async function autoScroll(page) {
   await page.evaluate(async () => {
     await new Promise((resolve, reject) => {
       let totalHeight = 0;
-      const distance = 100; // Scroll 100px at a time
+      const distance = 200; // Scroll 100px at a time
       const timer = setInterval(() => {
         const scrollHeight = document.body.scrollHeight;
         window.scrollBy(0, distance);
@@ -16,7 +17,7 @@ async function autoScroll(page) {
           clearInterval(timer);
           resolve();
         }
-      }, 200); // Adjust speed if necessary
+      }, 100); // Adjust speed if necessary
     });
   });
 }
@@ -42,7 +43,7 @@ async function getPathDetailsForWebsite(WebsiteName) {
 
 // Function to scrape a given URL
 async function scrapeGroceryWebsite(url, websiteName) {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: 'networkidle2' });
 
@@ -79,7 +80,17 @@ async function scrapeGroceryWebsite(url, websiteName) {
 }
 
 async function scrapeBlinkit(url) {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-infobars',
+      '--window-size=1920,1080',
+      '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36'
+    ],
+    ignoreDefaultArgs: ['--disable-extensions']
+  });
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: 'networkidle2' });
   
@@ -110,7 +121,7 @@ async function scrapeBlinkit(url) {
 }
 
 async function scrapeBigBasket(url) {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: 'networkidle2' });
 
@@ -129,7 +140,8 @@ async function scrapeBigBasket(url) {
 
     // Extract product quantiity
     const productQuantity = await productContainer.$eval('div > div > h3 > div.py-1\\.5.xl\\:py-1', el => el.textContent.trim());
-    
+
+    await page.waitForSelector('div > div > div.flex.flex-col.gap-0\\.5 > div.Pricing___StyledDiv-sc-pldi2d-0.bUnUzR > span.Label-sc-15v1nk5-0.Pricing___StyledLabel-sc-pldi2d-1.gJxZPQ.AypOi');
     // Extract product price
     const productPrice = await productContainer.$eval('div > div > div.flex.flex-col.gap-0\\.5 > div.Pricing___StyledDiv-sc-pldi2d-0.bUnUzR > span.Label-sc-15v1nk5-0.Pricing___StyledLabel-sc-pldi2d-1.gJxZPQ.AypOi', el => el.textContent.trim());
 
@@ -142,27 +154,63 @@ async function scrapeBigBasket(url) {
 }
 
 
-const product = "cashews";
+// const product = "cashews";
 
-// Zepto, Blinkit, BigBasket example URLs (update as needed)
-const zeptoUrl = `https://www.zeptonow.com/search?query=${product}`;
-const blinkitUrl = `https://blinkit.com/s/?q=${product}`;
-const bigbasketUrl = `https://www.bigbasket.com/ps/?q=${product}`;
+// // Zepto, Blinkit, BigBasket example URLs (update as needed)
+// const zeptoUrl = `https://www.zeptonow.com/search?query=${product}`;
+// const blinkitUrl = `https://blinkit.com/s/?q=${product}`;
+// const bigbasketUrl = `https://www.bigbasket.com/ps/?q=${product}`;
 
-(async () => {
+// (async () => {
 
+//   console.log('Scraping Zepto...');
+//   const zeptoProducts = await scrapeGroceryWebsite(zeptoUrl, "Zepto");
+//   console.log('Zepto Products:', zeptoProducts);
+//   console.log('Zepto Products:', zeptoProducts.length);
+
+//   console.log('Scraping Blinkit...');
+//   const blinkitProducts = await scrapeBlinkit(blinkitUrl);
+//   console.log('Blinkit Products:', blinkitProducts);
+//   console.log('Blinkit Products:', blinkitProducts.length);
+
+//   console.log('Scraping BigBasket...');
+//   const bigbasketProducts = await scrapeBigBasket(bigbasketUrl);
+//   console.log('BigBasket Products:', bigbasketProducts);
+//   console.log('BigBasket Products:', bigbasketProducts.length);
+// })();
+
+const app = express();
+const port = 3000;
+
+app.get('/scrape', async (req, res) => {
+  const product = req.query.product;
+
+  if (!product) {
+    return res.status(400).json({ error: 'Product query is required' });
+  }
+
+  // Call the appropriate scraping functions based on the product
   console.log('Scraping Zepto...');
-  const zeptoProducts = await scrapeGroceryWebsite(zeptoUrl, "Zepto");
+  const zeptoProducts = await scrapeGroceryWebsite(`https://www.zeptonow.com/search?query=${product}`, "Zepto");
   console.log('Zepto Products:', zeptoProducts);
   console.log('Zepto Products:', zeptoProducts.length);
 
   console.log('Scraping Blinkit...');
-  const blinkitProducts = await scrapeBlinkit(blinkitUrl);
+  const blinkitProducts = await scrapeBlinkit(`https://blinkit.com/s/?q=${product}`);
   console.log('Blinkit Products:', blinkitProducts);
   console.log('Blinkit Products:', blinkitProducts.length);
 
   console.log('Scraping BigBasket...');
-  const bigbasketProducts = await scrapeBigBasket(bigbasketUrl, "BigBasket");
+  const bigbasketProducts = await scrapeBigBasket(`https://www.bigbasket.com/ps/?q=${product}`);
   console.log('BigBasket Products:', bigbasketProducts);
   console.log('BigBasket Products:', bigbasketProducts.length);
-})();
+
+  // Combine all the results
+  const allProducts = [...zeptoProducts, ...blinkitProducts, ...bigbasketProducts];
+
+  res.json(allProducts);
+});
+
+app.listen(port, () => {
+  console.log(`Scraping service listening at http://localhost:${port}`);
+});
