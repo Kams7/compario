@@ -10,5 +10,6 @@ import dev.compario.product_service.models.Product;
 public interface ProductRepository extends JpaRepository<Product, Long>{
     
   Optional<Product> findById(Long id);
+  List<Product> findByCategory(String category);
   List<Product> findByName(String name);
 }

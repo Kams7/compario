@@ -20,17 +20,19 @@ public class ProductService {
     this.restTemplate = restTemplate;
   }
 
-  public List<Product> getProducts(String item) {
-    List<Product> products = productRepository.findByName(item);
+  public List<Product> getProducts(String category) {
+
+    // Check if the product is already in the database
+    List<Product> products = productRepository.findByCategory(category);
     if (!products.isEmpty()) {
       return products;
     }
 
-    // Code to send request to another service to scrape the data.
-    String scrapingServiceUrl = "http://localhost:8080/scrape";
+    // Send request to another service to scrape the data.
+    String scrapingServiceUrl = "http://localhost:3000/scrape";
 
     String scrapingUrl = UriComponentsBuilder.fromHttpUrl(scrapingServiceUrl)
-        .queryParam("item", item)
+        .queryParam("product", category)
         .toUriString();
 
         // Send the request to the scraping service

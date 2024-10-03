@@ -29,8 +29,10 @@ public class Product {
         generator = "product_sequence"
     )
     private Long id;
+    private String category;
     private String name;
     private String quantity;
     private String price;
     private String imageUrl;
+    private String redirectionUrl;
 }

@@ -20,9 +20,9 @@ public class ProductApiController {
     this.productService = productService;
   }
   
-  @GetMapping("/{item}")
-  public List<Product> getProducts(@RequestParam String item) {
-    return productService.getProducts(item);
+  @GetMapping
+  public List<Product> getProducts(@RequestParam String category) {
+    return productService.getProducts(category);
   }
 
 
