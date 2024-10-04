@@ -42,7 +42,9 @@ async function getPathDetailsForWebsite(WebsiteName) {
 }
 
 // Function to scrape a given URL
-async function scrapeGroceryWebsite(url, websiteName) {
+async function scrapeGroceryWebsite(product, websiteName) {
+  const url = `https://www.zeptonow.com//search?query=${product}`;
+
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: 'networkidle2' });
@@ -72,14 +74,15 @@ async function scrapeGroceryWebsite(url, websiteName) {
     const productPrice = await productContainer.$eval(pathDetails.productPricePath, el => el.textContent.trim());
 
     // Push the product to the array
-    products.push({ name: productName, quantity: productQuantity, price: productPrice });
+    products.push({ website: websiteName, category: product, name: productName, quantity: productQuantity, price: productPrice });
   }
 
   await browser.close();
   return products;
 }
 
-async function scrapeBlinkit(url) {
+async function scrapeBlinkit(product) {
+  const url = `https://blinkit.com/s/?q=${product}`;
   const browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -113,14 +116,16 @@ async function scrapeBlinkit(url) {
     const productPrice = await productContainer.$eval('div.tw-flex.tw-items-center.tw-justify-between > div:nth-child(1) > div', el => el.textContent.trim());
 
     // Push the product to the array
-    products.push({ name: productName, quantity: productQuantity, price: productPrice });
+    products.push({ website: "Blinkit", category: product, name: productName, quantity: productQuantity, price: productPrice });
   }
 
   await browser.close();
   return products;
 }
 
-async function scrapeBigBasket(url) {
+async function scrapeBigBasket(product) {
+  const url = `https://www.bigbasket.com/ps/?q=${product}`;
+
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: 'networkidle2' });
@@ -146,7 +151,7 @@ async function scrapeBigBasket(url) {
     const productPrice = await productContainer.$eval('div > div > div.flex.flex-col.gap-0\\.5 > div.Pricing___StyledDiv-sc-pldi2d-0.bUnUzR > span.Label-sc-15v1nk5-0.Pricing___StyledLabel-sc-pldi2d-1.gJxZPQ.AypOi', el => el.textContent.trim());
 
     // Push the product to the array
-    products.push({ name: productName, quantity: productQuantity, price: productPrice });
+    products.push({ website: "BigBasket", category: product, name: productName, quantity: productQuantity, price: productPrice });
   }
 
   await browser.close();
@@ -190,25 +195,32 @@ app.get('/scrape', async (req, res) => {
   }
 
   // Call the appropriate scraping functions based on the product
-  console.log('Scraping Zepto...');
-  const zeptoProducts = await scrapeGroceryWebsite(`https://www.zeptonow.com/search?query=${product}`, "Zepto");
-  console.log('Zepto Products:', zeptoProducts);
-  console.log('Zepto Products:', zeptoProducts.length);
+  try {
+    const [zeptoProducts, blinkitProducts, bigbasketProducts] = await Promise.all([
+      scrapeGroceryWebsite(product, "Zepto"),
+      scrapeBlinkit(product),
+      scrapeBigBasket(product)
+    ]);
+  
+    console.log('Zepto Products:', zeptoProducts);
+    console.log('Zepto Products Count:', zeptoProducts.length);
+  
+    console.log('Blinkit Products:', blinkitProducts);
+    console.log('Blinkit Products Count:', blinkitProducts.length);
+  
+    console.log('BigBasket Products:', bigbasketProducts);
+    console.log('BigBasket Products Count:', bigbasketProducts.length);
+  
+    // Combine all the results
+    const allProducts = [...zeptoProducts, ...blinkitProducts, ...bigbasketProducts];
+  
+    console.log('All Products:', allProducts);
+    
+    res.json(allProducts);
+  } catch (error) {
+    console.error('Error during scraping:', error);
+  }
 
-  console.log('Scraping Blinkit...');
-  const blinkitProducts = await scrapeBlinkit(`https://blinkit.com/s/?q=${product}`);
-  console.log('Blinkit Products:', blinkitProducts);
-  console.log('Blinkit Products:', blinkitProducts.length);
-
-  console.log('Scraping BigBasket...');
-  const bigbasketProducts = await scrapeBigBasket(`https://www.bigbasket.com/ps/?q=${product}`);
-  console.log('BigBasket Products:', bigbasketProducts);
-  console.log('BigBasket Products:', bigbasketProducts.length);
-
-  // Combine all the results
-  const allProducts = [...zeptoProducts, ...blinkitProducts, ...bigbasketProducts];
-
-  res.json(allProducts);
 });
 
 app.listen(port, () => {

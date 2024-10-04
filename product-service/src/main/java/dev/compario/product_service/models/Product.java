@@ -30,6 +30,7 @@ public class Product {
     )
     private Long id;
     private String category;
+    private String website;
     private String name;
     private String quantity;
     private String price;
